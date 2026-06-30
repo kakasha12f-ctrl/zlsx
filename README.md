@@ -32,6 +32,8 @@ The utility supports flexible combinations of CLI flags to completely control yo
 
 ---
 
+### -l is currently under development, so only file sizes and names are displayed for now.
+
 ## 🎨 Color Palette (Customization)
 
 To drastically reduce eye strain during long terminal sessions, standard high-saturation ANSI colors have been replaced with modern, softer pastel shades:
