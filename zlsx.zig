@@ -1,7 +1,7 @@
 const std = @import("std");
 const print = std.debug.print; // print
 
-// конфиг
+// config
 const Config = struct { allow: bool = true, all: bool = false, reverse: bool = false, flag_l: bool = false, human: bool = false, time: bool = false, sort_size: bool = false, show_size: bool = false, show_time: bool = false, flag_F: bool = false, flag_1: bool = false, flag_m: bool = false };
 
 // структура для хранения файлов
@@ -62,7 +62,7 @@ pub fn main(init: std.process.Init) !void {
     }
 }
 
-/// основная функция для zls
+/// main function for zlsx
 pub fn runLs(init: std.process.Init, config: Config, path: []const u8) !void {
     const allocator = init.arena.allocator(); // инициализация аллокатора
     var file_list: std.ArrayList(FileInfo) = .empty; // создаем массив для хранения аргументов
