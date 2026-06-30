@@ -6,6 +6,9 @@
 
 **zlsx** is a lightweight, high-performance clone of the core `ls` system utility, written from scratch in the **Zig** programming language. The project is heavily optimized for execution speed, featuring custom low-strain color palettes (Catppuccin Mocha/Nord) and reliable POSIX-compliant argument parsing.
 
+<img width="359" height="574" alt="изображение" src="https://github.com/user-attachments/assets/99bf6890-3d9c-434b-bfad-3a23ea6f3e45" />
+
+
 ---
 
 ## ✨ Core Features (Supported Flags)
