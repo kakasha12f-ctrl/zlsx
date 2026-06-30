@@ -42,7 +42,7 @@ To drastically reduce eye strain during long terminal sessions, standard high-sa
 ## 🚀 Build & Run
 
 ### Requirements
-* An installed **Zig** compiler (tested on version `0.17.0-dev`).
+* An installed **Zig** compiler (tested on version `0.17.0-dev` and `0.16.0`).
 
 ### Quick Start (Compile & Run instantly)
 ```bash
