@@ -1,11 +1,11 @@
 const std = @import("std");
 const print = std.debug.print; // print
 
-// config
+// конфиг
 const Config = struct { allow: bool = true, all: bool = false, reverse: bool = false, flag_l: bool = false, human: bool = false, time: bool = false, sort_size: bool = false, show_size: bool = false, show_time: bool = false, flag_F: bool = false, flag_1: bool = false, flag_m: bool = false };
 
 // структура для хранения файлов
-const FileInfo = struct { name: []const u8, kind: std.Io.File.Kind, size: u64, mtime: std.Io.Timestamp };
+const FileInfo = struct { name: []const u8, kind: std.Io.File.Kind, size: u64, mtime: i128 };
 
 /// main
 pub fn main(init: std.process.Init) !void {
@@ -54,15 +54,15 @@ pub fn main(init: std.process.Init) !void {
         print("--> Path: {s}\n", .{p});
         runLs(init, config, p) catch |err| {
             if (err == error.FileNotFound) {
-                print("zls: cannot open access '{s}': No such file or directory\n", .{p});
+                print("zlsx: cannot open access '{s}': No such file or directory\n", .{p});
             } else {
-                print("zls: unexpected error: '{}' for '{s}'\n", .{ err, p });
+                print("zlsx: unexpected error: '{}' for '{s}'\n", .{ err, p });
             }
         };
     }
 }
 
-/// main function for zlsx
+/// основная функция для zls
 pub fn runLs(init: std.process.Init, config: Config, path: []const u8) !void {
     const allocator = init.arena.allocator(); // инициализация аллокатора
     var file_list: std.ArrayList(FileInfo) = .empty; // создаем массив для хранения аргументов
@@ -75,20 +75,22 @@ pub fn runLs(init: std.process.Init, config: Config, path: []const u8) !void {
     while (try iterator.next(init.io)) |entry| { // добавление файлов, директорий и тд в массив
         const name_copy = try allocator.dupe(u8, entry.name);
 
-        var file_time: std.Io.Timestamp = undefined;
-        var file_size: usize = 0;
+        var file_size: u64 = 0;
+        var mtime_ns: i128 = 0;
 
-        if (config.time) {
-            const stat = try dir.statFile(init.io, entry.name, .{});
-            file_time = stat.mtime;
-        }
+        const need_stat = config.time or config.sort_size or config.show_size or config.flag_l or config.human or config.show_time;
+        if (need_stat) {
+            const stat = dir.statFile(init.io, entry.name, .{}) catch {
+                file_size = 0;
+                mtime_ns = 0;
+                continue;
+            };
 
-        if (config.sort_size or config.show_size) {
-            const stat = try dir.statFile(init.io, entry.name, .{});
             file_size = stat.size;
+            mtime_ns = stat.mtime.nanoseconds;
         }
 
-        try file_list.append(allocator, .{ .name = name_copy, .kind = entry.kind, .size = file_size, .mtime = file_time });
+        try file_list.append(allocator, .{ .name = name_copy, .kind = entry.kind, .size = file_size, .mtime = mtime_ns });
     }
     if (config.time) {
         std.mem.sort(FileInfo, file_list.items, {}, comboratorTime);
@@ -104,19 +106,19 @@ pub fn runLs(init: std.process.Init, config: Config, path: []const u8) !void {
 
     for (file_list.items, 0..) |entry, i| { // основной цикл для вывода
         if (!shouldShowFile(entry.name, config)) continue;
-
-        const stat = try flag_l(init.io, dir, entry.name);
         var size_buf: [64]u8 = undefined;
 
         if (config.flag_l or config.show_size or config.human) {
-            const size_str = formate(&size_buf, stat.size, config.human);
+            const size_str = formate(&size_buf, entry.size, config.human);
             if (config.flag_l or (config.flag_1 and config.show_size)) {
                 print("{s:>8} ", .{size_str});
             } else {
                 print("{s} ", .{size_str});
             }
         }
-        printOrNotTime(stat, config.show_time);
+        if (config.show_time) {
+            print("{d} Sec ", .{@divTrunc(entry.mtime, 1000000000)});
+        }
         switch (entry.kind) {
             .directory => print("\x1b[38;2;137;180;250m{s}\x1b[0m", .{printFilesTypes(&size_buf, entry.name, config.flag_F, true, false)}),
             .sym_link => print("\x1b[38;5;116m{s}\x1b[0m", .{printFilesTypes(&size_buf, entry.name, config.flag_F, false, true)}),
@@ -132,6 +134,8 @@ pub fn runLs(init: std.process.Init, config: Config, path: []const u8) !void {
             } else {
                 print("  ", .{});
             }
+        } else {
+            print(" ", .{});
         }
 
         if (config.flag_l or config.flag_1) {
@@ -158,7 +162,7 @@ pub fn printFilesTypes(buf: []u8, name: []const u8, DoOrNot: bool, isDirectory: 
             return std.fmt.bufPrint(buf, "{s}", .{name}) catch name;
         }
     } else {
-        return std.fmt.bufPrint(buf, "{s}", .{name}) catch name;
+        return name;
     }
 }
 
@@ -179,18 +183,11 @@ pub fn formate(buf: []u8, size: usize, human: bool) []const u8 {
     }
 }
 
-/// -T
-pub fn printOrNotTime(time: std.Io.File.Stat, show_time: bool) void {
-    if (show_time) {
-        return print("{d} Sec ", .{@divTrunc(time.ctime.nanoseconds, 1000000000)});
-    }
-}
-
 /// сортирование по времени
 pub fn comboratorTime(context: void, lhs: FileInfo, rhs: FileInfo) bool {
     _ = context;
 
-    return lhs.mtime.nanoseconds > rhs.mtime.nanoseconds;
+    return lhs.mtime > rhs.mtime;
 }
 
 /// сортирование по размерам
@@ -204,10 +201,4 @@ pub fn comporatorSize(context: void, lhs: FileInfo, rhs: FileInfo) bool {
 pub fn comporatorABC(context: void, lhs: FileInfo, rhs: FileInfo) bool {
     _ = context;
     return std.mem.lessThan(u8, lhs.name, rhs.name);
-}
-
-/// -l
-pub fn flag_l(io: anytype, dir: std.Io.Dir, name: []const u8) !std.Io.File.Stat {
-    const stat = try dir.statFile(io, name, .{});
-    return stat;
 }
