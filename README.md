@@ -56,3 +56,12 @@ zig run zlsx.zig
 
 # View a specific directory with custom options
 zig run zlsx.zig -- -l -h -S /home/user/Downloads
+```
+
+### Or (zig build)
+
+```bash
+zig build-exe -O ReleaseFast zlsx.zig
+
+./zlsx -l -h -S /home/user/Downloads
+```
